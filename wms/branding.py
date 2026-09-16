@@ -16,3 +16,4 @@ def logo_data_uri() -> str:
     except OSError:
         return ""
     return f"data:image/png;base64,{encoded}"
+

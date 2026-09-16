@@ -85,3 +85,4 @@ def render_master_page():
                         st.rerun()
                     except Exception as exc:
                         show_api_error("Barang tidak dapat dihapus", exc)
+

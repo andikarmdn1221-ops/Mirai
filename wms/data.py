@@ -45,6 +45,7 @@ def normalize_item_status(value) -> str:
 def _cache_scope() -> tuple[str, str]:
     """Pisahkan cache per identitas agar hasil Developer tidak dipakai sesi lain."""
     return (
+        str(st.session_state.get("auth_source", "local")) + ":" +
         str(st.session_state.get("auth_user", "Unknown")).strip().casefold(),
         str(st.session_state.get("auth_role", "Staff")).strip().casefold(),
     )
@@ -62,6 +63,7 @@ def normalize_stock_rows(raw_rows):
         rows = rows[1:]
 
     seen_names = set()
+    seen_item_ids = set()
     for row in rows:
         if not isinstance(row, list) or len(row) < 2:
             continue
@@ -89,10 +91,18 @@ def normalize_stock_rows(raw_rows):
             raise RuntimeError(f"Batas minimum untuk '{nama}' minimal 1")
 
         stock[nama] = quantity
-        master[nama] = {
+        item_info = {
             "status": normalize_item_status(row[2] if len(row) > 2 else "Aktif"),
             "min_stok": minimum,
         }
+        item_id = str(row[4] or "").strip() if len(row) > 4 else ""
+        if item_id:
+            normalized_item_id = item_id.casefold()
+            if normalized_item_id in seen_item_ids:
+                raise RuntimeError(f"ID barang duplikat terdeteksi: '{item_id}'")
+            seen_item_ids.add(normalized_item_id)
+            item_info["item_id"] = item_id
+        master[nama] = item_info
 
     return stock, master
 
@@ -141,6 +151,7 @@ def normalize_history_rows(raw_rows):
                 "Bukti URL": row[5] if len(row) > 5 else "",
                 "Status": row[6] if len(row) > 6 and row[6] else "AKTIF",
                 "Referensi": row[7] if len(row) > 7 else "",
+                "ID Barang": row[8] if len(row) > 8 else "",
             }
         )
     return result
@@ -322,13 +333,20 @@ def get_server_health(force=False):
 
 def sync_if_changed(force_health=False):
     """Polling ringan; full read hanya saat revision backend berubah."""
+    # Fragments run without app.py/login_gate. Revalidate before rendering data.
+    from .auth import _revalidate_active_session, clear_auth_session, get_users_config
+    if st.session_state.get("auth_user"):
+        if not _revalidate_active_session(get_users_config(), time.time()):
+            clear_auth_session()
+            st.rerun()
     if not AUTO_SYNC_ENABLED and not force_health:
         return False
     try:
         health = get_server_health(force=force_health)
         revision = str(health.get("data_revision", "") or "")
         current_revision = str(st.session_state.get("server_revision", "") or "")
-        if not revision or revision != current_revision:
+        age = time.time() - float(st.session_state.get("last_server_sync_epoch", 0) or 0)
+        if not revision or revision != current_revision or age >= DATA_CACHE_TTL_SECONDS:
             return refresh_data(force=True, quiet=True)
         return False
     except Exception:
@@ -342,13 +360,19 @@ def require_online_operation():
     if not WRITE_BLOCK_WHEN_OFFLINE:
         return
 
-    verified = False
     try:
-        get_server_health(force=True)
-        verified = True
+        health = get_server_health(force=True)
     except Exception:
         # Health ringan gagal: full read menjadi verifikasi cadangan.
         verified = refresh_data(force=True, quiet=True)
+    else:
+        if health.get("backend_version") != EXPECTED_BACKEND_VERSION:
+            st.error(
+                "Backend perlu diperbarui sebelum menyimpan perubahan. "
+                "Ikuti panduan rilis Mirai."
+            )
+            st.stop()
+        verified = True
 
     if not verified:
         st.error(

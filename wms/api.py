@@ -129,8 +129,8 @@ def api_health(timeout=HEALTH_TIMEOUT_SECONDS):
     }
 
 
-def api_post(payload: dict, timeout=60):
-    return _post_json(payload, timeout=timeout)
+def api_post(payload: dict, timeout=60, retry_attempts=1):
+    return _post_json(payload, timeout=timeout, retry_attempts=retry_attempts)
 
 
 def show_api_error(prefix: str, exc: Exception):

@@ -1089,3 +1089,4 @@ def inject_responsive_css():
         """,
         unsafe_allow_html=True,
     )
+

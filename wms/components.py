@@ -438,6 +438,8 @@ def render_reports_live():
 
 @_live_fragment(SECONDARY_SYNC_SECONDS if AUTO_SYNC_ENABLED else None)
 def render_audit_live():
+    from .auth import require_permission
+    require_permission("view_audit")
     sync_if_changed()
     audit_rows = st.session_state.get("audit", [])
     sync_text = st.session_state.get("last_server_sync", "belum tersinkron")

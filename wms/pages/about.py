@@ -49,3 +49,4 @@ def render_about_page():
         "Lisensi, konfigurasi database, akun, dan dukungan mengikuti perjanjian "
         "pada setiap instalasi."
     )
+

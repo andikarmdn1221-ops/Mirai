@@ -33,6 +33,7 @@ def full_backup_bytes(stock, master, history, audit):
                 "Jumlah Stok": stock[nama],
                 "Status": info.get("status", "Aktif"),
                 "Batas Minimum": info.get("min_stok", 5),
+                "ID Barang": info.get("item_id", ""),
             }
         )
 

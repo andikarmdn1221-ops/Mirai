@@ -346,3 +346,4 @@ elif active_menu == "Pengaturan & Reset":
     render_settings_page()
 elif active_menu == "Tentang Aplikasi":
     render_about_page()
+

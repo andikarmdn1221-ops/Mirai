@@ -1,3 +1,3 @@
 """Komponen inti WMS Microcement."""
 
-__version__ = "8.0-pro-mobile"
+__version__ = "9.0-rc1"

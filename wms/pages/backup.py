@@ -5,7 +5,7 @@ import time
 import streamlit as st
 
 from ..api import show_api_error
-from ..auth import current_role, require_permission
+from ..auth import current_role, has_permission, require_permission
 from ..config import ROLE_DEVELOPER
 from ..exports import full_backup_bytes
 from ..notifications import record_notification, send_telegram_document_detailed
@@ -31,7 +31,7 @@ def render_backup_page():
         st.session_state.get("stok", {}),
         st.session_state.get("master_info", {}),
         st.session_state.get("riwayat", []),
-        st.session_state.get("audit", []),
+        st.session_state.get("audit", []) if has_permission("view_audit") else [],
     )
     prefix = "SNAPSHOT_WMS" if backup_is_snapshot else "BACKUP_WMS"
     filename = f"{prefix}_{sekarang_wib().strftime('%Y%m%d_%H%M%S')}.xlsx"

@@ -67,6 +67,7 @@ def render_transaction_page(active_menu):
                         bukti,
                         image_bytes=image_bytes,
                         expected_stock_before=stock.get(barang, 0),
+                        item_id=master.get(barang, {}).get("item_id", ""),
                     )
                     proof_url = result.get("file_url", "")
                     remaining = result.get("stok_akhir", st.session_state.stok.get(barang, 0))
@@ -87,8 +88,14 @@ def render_transaction_page(active_menu):
                         notification_results.append(
                             deliver_notification(alert, "Peringatan stok")
                         )
+                    evidence_error = str(result.get("evidence_error") or "").strip()
+                    success_message = f"Transaksi berhasil. Stok akhir: {remaining} pcs."
+                    if evidence_error:
+                        success_message += (
+                            " Bukti transaksi belum tersimpan: " + evidence_error
+                        )
                     notification_flash(
-                        f"Transaksi berhasil. Stok akhir: {remaining} pcs.",
+                        success_message,
                         notification_results,
                     )
                     st.rerun()
@@ -127,7 +134,14 @@ def render_adjustment_page():
             else:
                 try:
                     require_online_operation()
-                    result = adjust_stock(barang, stok_baru, alasan, tgl, stok_lama)
+                    result = adjust_stock(
+                        barang,
+                        stok_baru,
+                        alasan,
+                        tgl,
+                        stok_lama,
+                        item_id=master.get(barang, {}).get("item_id", ""),
+                    )
                     delta = result.get("selisih", int(stok_baru) - int(stok_lama))
                     notification_results = [deliver_notification(
                         f"🧮 *PENYESUAIAN STOK*\n📦 {barang}\n"
@@ -191,6 +205,7 @@ def render_correction_page():
                 "Tanggal": tgl.strftime("%d-%m-%Y"),
                 "Tipe": tipe,
                 "Barang": barang,
+                "ID Barang": master.get(barang, {}).get("item_id", ""),
                 "Jumlah": jumlah,
                 "Pembeli / Keterangan": ket.strip() or "-",
             }

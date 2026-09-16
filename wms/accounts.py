@@ -197,3 +197,4 @@ def delete_account(username: str, confirmation: str):
         },
         timeout=30,
     )
+

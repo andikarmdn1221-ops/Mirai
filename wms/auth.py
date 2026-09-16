@@ -129,21 +129,22 @@ def password_matches(input_password: str, configured: dict) -> bool:
 
 
 def clear_auth_session():
-    for key in (
-        "auth_user",
-        "auth_display_name",
-        "auth_role",
-        "auth_login_at",
-        "auth_last_activity",
-        "auth_source",
-        "auth_last_validation",
-    ):
-        st.session_state.pop(key, None)
+    # Widget values, exports, pending requests and snapshots belong to one user.
+    # Keep only the login limiter; logging out must not reset failed attempts.
+    retained = {
+        key: st.session_state[key]
+        for key in ("login_attempts", "login_lock_until")
+        if key in st.session_state
+    }
+    for key in list(st.session_state):
+        del st.session_state[key]
+    st.session_state.update(retained)
 
 
 def _complete_login(
     username: str, role: str, now: float, display_name="", source="local"
 ):
+    clear_auth_session()
     st.session_state.auth_user = username
     st.session_state.auth_display_name = display_name or username
     st.session_state.auth_role = normalize_role(role)
@@ -177,6 +178,9 @@ def _revalidate_active_session(users: dict, now: float) -> bool:
 
     username = str(st.session_state.get("auth_user") or "")
     source = str(st.session_state.get("auth_source") or "local")
+    previous_identity = (
+        st.session_state.get("auth_user"), st.session_state.get("auth_role"), source
+    )
     try:
         if source == "dynamic":
             from .accounts import validate_account_session
@@ -212,6 +216,14 @@ def _revalidate_active_session(users: dict, now: float) -> bool:
         )
         return False
 
+    current_identity = (
+        st.session_state.get("auth_user"), st.session_state.get("auth_role"), source
+    )
+    if current_identity != previous_identity:
+        identity = {key: value for key, value in st.session_state.items() if key.startswith("auth_")}
+        clear_auth_session()
+        st.session_state.update(identity)
+        st.session_state.auth_last_validation = now
     st.session_state.auth_last_validation = now
     return True
 

@@ -6,7 +6,7 @@ import streamlit as st
 
 from .api import _post_json, api_post
 from .auth import actor_payload
-from .config import BACKUP_STATUS_TTL_SECONDS
+from .config import BACKUP_STATUS_TTL_SECONDS, DATABASE_RETRY_ATTEMPTS
 from .data import clear_and_refresh
 from .utils import (
     clean_note,
@@ -25,6 +25,7 @@ def do_transaction(
     file_uploaded=None,
     image_bytes=None,
     expected_stock_before=None,
+    item_id=None,
 ):
     payload = {
         "action": "transaction",
@@ -33,16 +34,17 @@ def do_transaction(
         "waktu": combine_manual_date(tgl_transaksi),
         "tipe": tipe,
         "barang": barang,
+        "item_id": str(item_id or ""),
         "jumlah": int(jumlah),
         "keterangan": clean_note(keterangan, required=(tipe == "KELUAR")),
         **to_image_payload(file_uploaded, image_bytes),
         **actor_payload(),
     }
     if expected_stock_before is not None:
-        # Backend baru dapat memakai nilai ini sebagai stale-stock guard;
-        # backend 7.1 yang belum mendukung akan mengabaikan field tambahan ini.
+        # Backend 8.0 memakai nilai ini sebagai stale-stock guard.
         payload["expected_stock_before"] = int(expected_stock_before)
-    result = api_post(payload)
+    # The backend treats tx_id as an idempotency key, so a network retry is safe.
+    result = api_post(payload, retry_attempts=DATABASE_RETRY_ATTEMPTS)
     clear_and_refresh()
     return result
 
@@ -58,7 +60,8 @@ def add_master(nama, stok_awal, min_stok):
             "tx_id": make_tx_id("NEW"),
             "waktu": combine_manual_date(hari_ini_wib()),
             **actor_payload(),
-        }
+        },
+        retry_attempts=DATABASE_RETRY_ATTEMPTS,
     )
     clear_and_refresh()
     return result
@@ -95,34 +98,43 @@ def correct_transaction(old_tx, new_tx):
             "new_tanggal": new_tx["Tanggal"],
             "new_tipe": new_tx["Tipe"],
             "new_barang": new_tx["Barang"],
+            "new_item_id": str(new_tx.get("ID Barang") or ""),
             "new_jumlah": int(new_tx["Jumlah"]),
             "new_keterangan": clean_note(new_tx["Pembeli / Keterangan"]),
             **actor_payload(),
-        }
+        },
+        retry_attempts=DATABASE_RETRY_ATTEMPTS,
     )
     clear_and_refresh()
     return result
 
 
 def void_transaction(tx_id):
-    result = api_post({"action": "transaction_void", "tx_id": tx_id, **actor_payload()})
+    result = api_post(
+        {"action": "transaction_void", "tx_id": tx_id, **actor_payload()},
+        retry_attempts=DATABASE_RETRY_ATTEMPTS,
+    )
     clear_and_refresh()
     return result
 
 
-def adjust_stock(barang, stok_baru, alasan, tgl_transaksi, expected_stock_before):
+def adjust_stock(
+    barang, stok_baru, alasan, tgl_transaksi, expected_stock_before, item_id=None
+):
     result = api_post(
         {
             "action": "stock_adjust",
             "tx_id": make_tx_id("ADJ"),
             "barang": barang,
+            "item_id": str(item_id or ""),
             "stok_baru": int(stok_baru),
             "expected_stock_before": int(expected_stock_before),
             "alasan": clean_note(alasan, required=True),
             "tanggal": tgl_transaksi.strftime("%d-%m-%Y"),
             "waktu": combine_manual_date(tgl_transaksi),
             **actor_payload(),
-        }
+        },
+        retry_attempts=DATABASE_RETRY_ATTEMPTS,
     )
     clear_and_refresh()
     return result

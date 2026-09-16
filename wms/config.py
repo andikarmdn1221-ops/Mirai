@@ -13,8 +13,8 @@ except Exception:
     _SECRETS = {}
 
 WIB = ZoneInfo("Asia/Jakarta")
-APP_VERSION = "8.8.1-ui"
-EXPECTED_BACKEND_VERSION = "7.5-performance"
+APP_VERSION = "9.0-rc1"
+EXPECTED_BACKEND_VERSION = "8.0-atomic"
 URL_GSHEET_API = _SECRETS.get("URL_GSHEET_API", "")
 API_SHARED_KEY = _SECRETS.get("API_SHARED_KEY", "")
 AUTH_SIGNING_KEY = _SECRETS.get("AUTH_SIGNING_KEY", "")
@@ -34,7 +34,13 @@ SESSION_REVALIDATE_SECONDS = max(
     30, int(_SECRETS.get("SESSION_REVALIDATE_SECONDS", 60))
 )
 TELEGRAM_RETRY_ATTEMPTS = max(
-    1, min(5, int(_SECRETS.get("TELEGRAM_RETRY_ATTEMPTS", 3)))
+    1, min(5, int(_SECRETS.get("TELEGRAM_RETRY_ATTEMPTS", 2)))
+)
+TELEGRAM_REQUEST_TIMEOUT_SECONDS = max(
+    5, min(20, int(_SECRETS.get("TELEGRAM_REQUEST_TIMEOUT_SECONDS", 10)))
+)
+TELEGRAM_DOCUMENT_TIMEOUT_SECONDS = max(
+    10, min(60, int(_SECRETS.get("TELEGRAM_DOCUMENT_TIMEOUT_SECONDS", 30)))
 )
 DATABASE_RETRY_ATTEMPTS = max(
     1, min(2, int(_SECRETS.get("DATABASE_RETRY_ATTEMPTS", 2)))
@@ -109,6 +115,7 @@ RIWAYAT_COLUMNS = [
     "Bukti URL",
     "Status",
     "Referensi",
+    "ID Barang",
 ]
 
 AUDIT_COLUMNS = ["Waktu", "User", "Role", "Aksi", "ID Transaksi", "Detail"]

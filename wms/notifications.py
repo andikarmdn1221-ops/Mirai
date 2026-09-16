@@ -11,7 +11,9 @@ from .config import (
     NOTIFICATION_LOG_LIMIT,
     TELEGRAM_BOT_TOKEN,
     TELEGRAM_CHAT_ID,
+    TELEGRAM_DOCUMENT_TIMEOUT_SECONDS,
     TELEGRAM_RETRY_ATTEMPTS,
+    TELEGRAM_REQUEST_TIMEOUT_SECONDS,
 )
 from .utils import redact_sensitive, waktu_display
 
@@ -43,7 +45,7 @@ def test_telegram_connection():
     try:
         # 1) Pastikan token valid dan ambil identitas bot.
         get_me_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getMe"
-        res = requests.get(get_me_url, timeout=15)
+        res = requests.get(get_me_url, timeout=TELEGRAM_REQUEST_TIMEOUT_SECONDS)
         if not res.ok:
             return False, telegram_response_detail(res)
 
@@ -58,7 +60,7 @@ def test_telegram_connection():
         sent = requests.post(
             send_url,
             json={"chat_id": str(TELEGRAM_CHAT_ID), "text": test_message},
-            timeout=20,
+            timeout=TELEGRAM_REQUEST_TIMEOUT_SECONDS,
         )
         if not sent.ok:
             return False, telegram_response_detail(sent)
@@ -98,7 +100,7 @@ def send_telegram_detailed(
                     url,
                     data={"chat_id": active_chat_id, "caption": message},
                     files={"photo": ("bukti.jpg", image_bytes, "image/jpeg")},
-                    timeout=20,
+                    timeout=TELEGRAM_REQUEST_TIMEOUT_SECONDS,
                 )
             else:
                 url = f"https://api.telegram.org/bot{active_token}/sendMessage"
@@ -112,7 +114,7 @@ def send_telegram_detailed(
                 res = requests.post(
                     url,
                     json=payload,
-                    timeout=20,
+                    timeout=TELEGRAM_REQUEST_TIMEOUT_SECONDS,
                 )
                 # Keterangan/nama barang dapat mengandung karakter Markdown.
                 # Jika Telegram menolak entity Markdown, kirim ulang sebagai plain text.
@@ -122,7 +124,11 @@ def send_telegram_detailed(
                         plain_payload = {"chat_id": active_chat_id, "text": message}
                         if reply_markup:
                             plain_payload["reply_markup"] = reply_markup
-                        res = requests.post(url, json=plain_payload, timeout=20)
+                        res = requests.post(
+                            url,
+                            json=plain_payload,
+                            timeout=TELEGRAM_REQUEST_TIMEOUT_SECONDS,
+                        )
 
             if res.ok:
                 return True, "Notifikasi berhasil dikirim ke Telegram."
@@ -228,7 +234,7 @@ def send_telegram_document_detailed(message: str, file_bytes: bytes, file_name: 
                         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     )
                 },
-                timeout=40,
+                timeout=TELEGRAM_DOCUMENT_TIMEOUT_SECONDS,
             )
             if res.ok:
                 return True, "Backup berhasil dikirim ke Telegram."

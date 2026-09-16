@@ -35,3 +35,4 @@ def render_notification_status_page():
                 st.success(detail)
             else:
                 st.error(f"Tes Telegram gagal: {detail}")
+

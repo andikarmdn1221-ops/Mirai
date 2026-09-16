@@ -258,3 +258,4 @@ def hide_loading_screen(placeholder):
     """Hapus overlay dengan aman; menerima ``None`` agar mudah dipakai di finally."""
     if placeholder is not None:
         placeholder.empty()
+

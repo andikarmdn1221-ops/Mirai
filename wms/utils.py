@@ -231,3 +231,4 @@ def to_image_payload(uploaded_file, image_bytes=None):
         "image_name": f"{sekarang_wib().strftime('%Y%m%d_%H%M%S')}_{original_stem}.jpg",
         "image_mime": "image/jpeg",
     }
+
